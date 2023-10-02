@@ -66,10 +66,10 @@ export class PodcastsService {
 
   async getPodcast(id: number): Promise<PodcastOutput> {
     try {
-      const podcast = await this.podcastRepository.findOne(
-        { id },
-        { relations: ['episodes'] },
-      );
+      const podcast = await this.podcastRepository.findOne({
+        where: { id },
+        relations: ['episodes'],
+      });
       if (!podcast) {
         return {
           ok: false,
@@ -145,7 +145,7 @@ export class PodcastsService {
     if (!ok) {
       return { ok, error };
     }
-    const episode = episodes.find(episode => episode.id === episodeId);
+    const episode = episodes.find((episode) => episode.id === episodeId);
     if (!episode) {
       return {
         ok: false,
