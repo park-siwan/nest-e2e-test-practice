@@ -4,12 +4,21 @@ import {
   afterAllSetup,
   baseTestStart,
   beforeAllSetup,
+  privateTest,
   publicTest,
 } from './global-setup';
+
+const resDecomposer = (res: request.Response) => {
+  return res.body.data;
+};
+
 const testUser = {
   email: 'siwan@gmail.com',
   password: '12345',
 };
+const title = 'abc';
+const category = 'def';
+
 describe('Podcasts Resolver', () => {
   let jwtToken: string;
   let app: INestApplication;
@@ -78,13 +87,70 @@ describe('Podcasts Resolver', () => {
         });
     });
   });
+
+  describe('createPodcast', () => {
+    it('should create a new podcast', () => {
+      return privateTest(
+        `
+      mutation {
+        createPodcast(input:{
+          title:"${title}",
+          category:"${category}"
+        }) {
+          ok
+          id
+          error
+        }
+      }
+  `,
+        baseTest,
+        jwtToken,
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            createPodcast: { ok, error, id },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(id).toBe(expect.any(Number));
+          expect(error).toBe(null);
+        });
+    });
+    it('should fail if podcast already exists', () => {
+      return privateTest(
+        `
+      mutation {
+        createPodcast(input:{
+          title:"${title}",
+          category:"${category}"
+        }) {
+          ok
+          id
+          error
+        }
+      }
+  `,
+        baseTest,
+        jwtToken,
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            createPodcast: { ok, error, id },
+          } = resDecomposer(res);
+          expect(ok).toBe(false);
+          expect(id).toBe(null);
+          expect(error).toBe('Internal server error occurred.');
+        });
+    });
+  });
   describe('getAllPodcasts', () => {});
   it.todo('getPodcast');
-  it.todo('getEpisodes');
-  it.todo('createPodcast');
-  it.todo('deletePodcast');
   it.todo('updatePodcast');
+  it.todo('deletePodcast');
+
   it.todo('createEpisode');
+  it.todo('getEpisodes');
   it.todo('updateEpisode');
   it.todo('deleteEpisode');
 });
