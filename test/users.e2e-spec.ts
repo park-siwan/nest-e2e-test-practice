@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-
+import * as request from 'supertest';
 import {
   afterAllSetup,
   baseTestStart,
@@ -9,11 +9,6 @@ import {
   privateTest,
   publicTest,
 } from './global-setup';
-jest.mock('got', () => {
-  return {
-    post: jest.fn(),
-  };
-});
 
 const testUser = {
   email: 'siwan@gmail.com',
@@ -24,14 +19,15 @@ describe('UserModule (e2e)', () => {
   let jwtToken: string;
   let app: INestApplication;
   let usersRepository: Repository<User>;
-
+  let baseTest: request.Test;
   beforeAll(async () => {
     const { app: appInstance, usersRepository: repoInstance } =
       await beforeAllSetup();
     app = appInstance;
     usersRepository = repoInstance;
+    baseTest = baseTestStart(app);
   });
-  const baseTest = baseTestStart(app);
+
   afterAll(async () => {
     afterAllSetup();
   });
