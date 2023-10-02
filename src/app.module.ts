@@ -9,12 +9,17 @@ import { UsersModule } from './users/users.module';
 import { JwtModule } from './jwt/jwt.module';
 import { JwtMiddleware } from './jwt/jwt.middleware';
 import { ApolloDriver } from '@nestjs/apollo';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'dev' ? '.env.dev' : '.env.test',
+    }),
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: 'db.sqlite3',
+      database: process.env.DB_NAME,
       synchronize: true,
       logging: process.env.NODE_ENV !== 'test',
       entities: [Podcast, Episode, User],
