@@ -44,6 +44,7 @@ export const afterAllSetup = async () => {
     console.log(error);
   }
 };
+
 const GRAPHQL_ENDPOINT = '/graphql';
 export const baseTestStart = (app: INestApplication) =>
   request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
