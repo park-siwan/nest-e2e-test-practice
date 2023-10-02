@@ -1,19 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import * as path from 'path';
-import * as fs from 'fs';
+
+import {
+  afterAllSetup,
+  baseTestStart,
+  beforeAllSetup,
+  privateTest,
+  publicTest,
+} from './global-setup';
 jest.mock('got', () => {
   return {
     post: jest.fn(),
   };
 });
-
-const GRAPHQL_ENDPOINT = '/graphql';
 
 const testUser = {
   email: 'siwan@gmail.com',
@@ -21,41 +21,25 @@ const testUser = {
 };
 
 describe('UserModule (e2e)', () => {
+  let jwtToken: string;
   let app: INestApplication;
   let usersRepository: Repository<User>;
 
-  let jwtToken: string;
-
-  const baseTest = () => request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
-  const publicTest = (query: string) => baseTest().send({ query });
-  const privateTest = (query: string) =>
-    baseTest().set('X-JWT', jwtToken).send({ query });
-
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = module.createNestApplication();
-    usersRepository = module.get<Repository<User>>(getRepositoryToken(User));
-
-    await app.init();
+    const { app: appInstance, usersRepository: repoInstance } =
+      await beforeAllSetup();
+    app = appInstance;
+    usersRepository = repoInstance;
   });
-
+  const baseTest = baseTestStart(app);
   afterAll(async () => {
-    const dbPath = path.resolve(__dirname, '../test-db.sqlite3');
-    try {
-      if (fs.existsSync(dbPath)) {
-        fs.unlinkSync(dbPath); //데이터베이스 파일 삭제
-      }
-    } catch (error) {
-      console.log(error);
-    }
+    afterAllSetup();
   });
 
   describe('createAccount', () => {
     it('should create account', () => {
-      return publicTest(`
+      return publicTest(
+        `
         mutation {
           createAccount(input:{
             email:"${testUser.email}",
@@ -66,7 +50,9 @@ describe('UserModule (e2e)', () => {
             error
           }
         }
-        `)
+        `,
+        baseTest,
+      )
         .expect(200)
         .expect((res) => {
           expect(res.body.data.createAccount.ok).toBe(true);
@@ -74,7 +60,8 @@ describe('UserModule (e2e)', () => {
         });
     });
     it('should fail if account already exists', () => {
-      return publicTest(`
+      return publicTest(
+        `
       mutation {
         createAccount(input:{
           email:"${testUser.email}",
@@ -85,7 +72,9 @@ describe('UserModule (e2e)', () => {
           error
         }
       }
-      `)
+      `,
+        baseTest,
+      )
         .expect(200)
         .expect((res) => {
           expect(res.body.data.createAccount.ok).toBe(false);
@@ -97,7 +86,8 @@ describe('UserModule (e2e)', () => {
   });
   describe('login', () => {
     it('should login with correct credentials', () => {
-      return publicTest(`
+      return publicTest(
+        `
       mutation {
         login(input: {
           email:"${testUser.email}",
@@ -108,7 +98,9 @@ describe('UserModule (e2e)', () => {
           token
         }
       }
-      `)
+      `,
+        baseTest,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -123,7 +115,8 @@ describe('UserModule (e2e)', () => {
         });
     });
     it('should not be able login with wrong credentials', () => {
-      return publicTest(`
+      return publicTest(
+        `
       mutation {
         login(input: {
           email:"${testUser.email}",
@@ -134,7 +127,9 @@ describe('UserModule (e2e)', () => {
           token
         }
       }
-      `)
+      `,
+        baseTest,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -156,7 +151,8 @@ describe('UserModule (e2e)', () => {
       userId = user.id;
     });
     it("should see a user's profile", () => {
-      return privateTest(`
+      return privateTest(
+        `
         {
           seeProfile(userId:${userId}){
             ok
@@ -166,7 +162,10 @@ describe('UserModule (e2e)', () => {
             }
           }
         }
-        `)
+        `,
+        baseTest,
+        jwtToken,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -186,7 +185,8 @@ describe('UserModule (e2e)', () => {
         });
     });
     it('should not find a profile', () => {
-      return privateTest(`
+      return privateTest(
+        `
         {
           seeProfile(userId:666){
             ok
@@ -196,7 +196,10 @@ describe('UserModule (e2e)', () => {
             }
           }
         }
-        `)
+        `,
+        baseTest,
+        jwtToken,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -214,13 +217,17 @@ describe('UserModule (e2e)', () => {
   });
   describe('me', () => {
     it('should find my profile', () => {
-      return privateTest(`
+      return privateTest(
+        `
         {
           me {
             email
           }
         }
-        `)
+        `,
+        baseTest,
+        jwtToken,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -234,13 +241,16 @@ describe('UserModule (e2e)', () => {
         });
     });
     it('should not allow logged out user', () => {
-      return publicTest(`
+      return publicTest(
+        `
         {
           me {
             email
           }
         }
-        `)
+        `,
+        baseTest,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -254,7 +264,8 @@ describe('UserModule (e2e)', () => {
   describe('editProfile', () => {
     const NEW_EMAIL = 'nico@new.com';
     it('should change email', () => {
-      return privateTest(`
+      return privateTest(
+        `
             mutation {
               editProfile(input:{
                 email: "${NEW_EMAIL}"
@@ -263,7 +274,10 @@ describe('UserModule (e2e)', () => {
                 error
               }
             }
-        `)
+        `,
+        baseTest,
+        jwtToken,
+      )
         .expect(200)
         .expect((res) => {
           const {
@@ -278,13 +292,17 @@ describe('UserModule (e2e)', () => {
         });
     });
     it('should have new email', () => {
-      return privateTest(`
+      return privateTest(
+        `
           {
             me {
               email
             }
           }
-        `)
+        `,
+        baseTest,
+        jwtToken,
+      )
         .expect(200)
         .expect((res) => {
           const {
