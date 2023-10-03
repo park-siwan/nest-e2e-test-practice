@@ -3,12 +3,13 @@ import { Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import * as request from 'supertest';
 import {
+  GRAPHQL_ENDPOINT,
   afterAllSetup,
-  baseTestStart,
   beforeAllSetup,
-  privateTest,
-  publicTest,
 } from './global-setup';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AppModule } from 'src/app.module';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 const testUser = {
   email: 'siwan@gmail.com',
@@ -19,13 +20,16 @@ describe('UserModule (e2e)', () => {
   let jwtToken: string;
   let app: INestApplication;
   let usersRepository: Repository<User>;
-  let baseTest: request.Test;
+
+  const baseTest = () => request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
+  const publicTest = (query: string) => baseTest().send({ query });
+  const privateTest = (query: string) =>
+    baseTest().set('X-JWT', jwtToken).send({ query });
   beforeAll(async () => {
-    const { app: appInstance, usersRepository: repoInstance } =
+    const { app: appInstance, usersRepository: usersRepositoryInstance } =
       await beforeAllSetup();
     app = appInstance;
-    usersRepository = repoInstance;
-    baseTest = baseTestStart(app);
+    usersRepository = usersRepositoryInstance;
   });
 
   afterAll(async () => {
@@ -47,7 +51,6 @@ describe('UserModule (e2e)', () => {
           }
         }
         `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -69,7 +72,6 @@ describe('UserModule (e2e)', () => {
         }
       }
       `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -95,7 +97,6 @@ describe('UserModule (e2e)', () => {
         }
       }
       `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -124,7 +125,6 @@ describe('UserModule (e2e)', () => {
         }
       }
       `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -159,8 +159,6 @@ describe('UserModule (e2e)', () => {
           }
         }
         `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {
@@ -193,8 +191,6 @@ describe('UserModule (e2e)', () => {
           }
         }
         `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {
@@ -221,8 +217,6 @@ describe('UserModule (e2e)', () => {
           }
         }
         `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {
@@ -245,7 +239,6 @@ describe('UserModule (e2e)', () => {
           }
         }
         `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -271,8 +264,6 @@ describe('UserModule (e2e)', () => {
               }
             }
         `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {
@@ -296,8 +287,6 @@ describe('UserModule (e2e)', () => {
             }
           }
         `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {

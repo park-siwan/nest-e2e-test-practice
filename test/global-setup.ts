@@ -45,15 +45,4 @@ export const afterAllSetup = async () => {
   }
 };
 
-const GRAPHQL_ENDPOINT = '/graphql';
-export const baseTestStart = (app: INestApplication) =>
-  request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
-
-export const publicTest = (query: string, baseTest: request.Test) =>
-  baseTest.send({ query });
-
-export const privateTest = (
-  query: string,
-  baseTest: request.Test,
-  jwtToken: string,
-) => baseTest.set('X-JWT', jwtToken).send({ query });
+export const GRAPHQL_ENDPOINT = '/graphql';

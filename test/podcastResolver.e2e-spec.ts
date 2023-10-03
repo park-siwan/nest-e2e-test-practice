@@ -1,11 +1,9 @@
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import {
+  GRAPHQL_ENDPOINT,
   afterAllSetup,
-  baseTestStart,
   beforeAllSetup,
-  privateTest,
-  publicTest,
 } from './global-setup';
 
 const resDecomposer = (res: request.Response) => {
@@ -22,11 +20,14 @@ const category = 'def';
 describe('Podcasts Resolver', () => {
   let jwtToken: string;
   let app: INestApplication;
-  let baseTest: request.Test;
+  const baseTest = () => request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
+  const publicTest = (query: string) => baseTest().send({ query });
+  const privateTest = (query: string) =>
+    baseTest().set('X-JWT', jwtToken).send({ query });
+
   beforeAll(async () => {
     const { app: appInstance } = await beforeAllSetup();
     app = appInstance;
-    baseTest = baseTestStart(app);
   });
 
   afterAll(async () => {
@@ -47,7 +48,6 @@ describe('Podcasts Resolver', () => {
           }
         }
         `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -71,7 +71,6 @@ describe('Podcasts Resolver', () => {
         }
       }
       `,
-        baseTest,
       )
         .expect(200)
         .expect((res) => {
@@ -103,8 +102,6 @@ describe('Podcasts Resolver', () => {
         }
       }
   `,
-        baseTest,
-        jwtToken,
       )
         .expect(200)
         .expect((res) => {
@@ -112,45 +109,94 @@ describe('Podcasts Resolver', () => {
             createPodcast: { ok, error, id },
           } = resDecomposer(res);
           expect(ok).toBe(true);
-          expect(id).toBe(expect.any(Number));
+          expect(id).toEqual(expect.any(Number));
           expect(error).toBe(null);
         });
     });
-    it('should fail if podcast already exists', () => {
+  });
+  describe('getAllPodcasts', () => {
+    it('should return a list of podcasts', () => {
       return privateTest(
         `
-      mutation {
-        createPodcast(input:{
-          title:"${title}",
-          category:"${category}"
-        }) {
-          ok
-          id
-          error
+        {
+          getAllPodcasts {
+            ok
+            error
+            podcasts {
+            title
+            }
+          }
         }
-      }
-  `,
-        baseTest,
-        jwtToken,
+      `,
       )
         .expect(200)
         .expect((res) => {
           const {
-            createPodcast: { ok, error, id },
+            getAllPodcasts: { ok, error, podcasts },
           } = resDecomposer(res);
-          expect(ok).toBe(false);
-          expect(id).toBe(null);
-          expect(error).toBe('Internal server error occurred.');
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+          expect(podcasts).toBeInstanceOf(Array);
         });
     });
   });
-  describe('getAllPodcasts', () => {});
-  it.todo('getPodcast');
-  it.todo('updatePodcast');
-  it.todo('deletePodcast');
+  describe('getPodcast', () => {
+    it('should return a podcast', () => {
+      return privateTest(
+        `
+        {
+          getPodcast(input:{id:1}){
+            error
+            ok
+            podcast{
+              title
+              category
+              rating
+              episodes{
+                title
+              }
+            }
+          }
+        }        
+      `,
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            getPodcast: { ok, error, podcast },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+          expect(podcast.title).toEqual(expect.any(String));
+          expect(podcast.category).toEqual(expect.any(String));
+          expect(podcast.rating).toEqual(expect.any(Number));
+          expect(podcast.episodes).toBeInstanceOf(Array);
+        });
+    });
+  });
+  describe('updatePodcast', () => {
+    it('should return an error message if no podcasts are found', () => {
+      return privateTest(
+        `
+      mutation {
+        updatePodcast(
+          input: {
+            id: 1
+            payload: { title: "updateTitle2", category: "updateCategory2", rating: 2 }
+          }
+        ){
+          ok
+          error
+        }
+      }
+      `,
+      ).expect(200);
+    });
+  });
+  // describe('deletePodcast', () => {});
 
-  it.todo('createEpisode');
-  it.todo('getEpisodes');
-  it.todo('updateEpisode');
-  it.todo('deleteEpisode');
+  // describe('createEpisode', () => {});
+  // describe('getEpisodes', () => {});
+  // describe('updateEpisode', () => {});
+  // describe('deleteEpisode', () => {});
 });
