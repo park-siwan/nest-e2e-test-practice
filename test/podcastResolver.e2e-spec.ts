@@ -20,18 +20,18 @@ const category = 'def';
 describe('Podcasts Resolver', () => {
   let jwtToken: string;
   let app: INestApplication;
-  const baseTest = () => request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
-  const publicTest = (query: string) => baseTest().send({ query });
-  const privateTest = (query: string) =>
-    baseTest().set('X-JWT', jwtToken).send({ query });
 
   beforeAll(async () => {
     const { app: appInstance } = await beforeAllSetup();
     app = appInstance;
   });
+  const baseTest = () => request(app.getHttpServer()).post(GRAPHQL_ENDPOINT);
+  const publicTest = (query: string) => baseTest().send({ query });
+  const privateTest = (query: string) =>
+    baseTest().set('X-JWT', jwtToken).send({ query });
 
   afterAll(async () => {
-    afterAllSetup();
+    await afterAllSetup();
   });
   describe('createAccount', () => {
     it('should create account', () => {
@@ -175,7 +175,7 @@ describe('Podcasts Resolver', () => {
     });
   });
   describe('updatePodcast', () => {
-    it('should return an error message if no podcasts are found', () => {
+    it('should successfully update podcast', () => {
       return privateTest(
         `
       mutation {
@@ -190,13 +190,243 @@ describe('Podcasts Resolver', () => {
         }
       }
       `,
-      ).expect(200);
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            updatePodcast: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toEqual(true);
+          expect(error).toEqual(null);
+        });
     });
   });
-  // describe('deletePodcast', () => {});
 
-  // describe('createEpisode', () => {});
-  // describe('getEpisodes', () => {});
-  // describe('updateEpisode', () => {});
-  // describe('deleteEpisode', () => {});
+  describe('createEpisode', () => {
+    it('should create a new episode', () => {
+      return privateTest(`
+      mutation{
+        createEpisode(input:{
+          title:"episodeTitle",
+          category:"episodeCategory",
+          podcastId:1
+        }){
+          ok
+          error
+        }
+      }
+      `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            createEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+        });
+    });
+  });
+  describe('getEpisodes', () => {
+    it('should get episodes', () => {
+      return privateTest(`
+    {
+      getEpisodes(input:{id:1}){
+        ok
+        error
+      }
+    }
+    `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            getEpisodes: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+        });
+    });
+  });
+  describe('updateEpisode', () => {
+    it('should update podcast', () => {
+      return privateTest(`
+        mutation {
+          updateEpisode(
+            input: {
+              title: "episodeUpdate"
+              category: "episodeCategoryUpdate"
+              podcastId: 1
+              episodeId: 1
+            }
+          ) {
+            ok
+            error
+          }
+        }    
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            updateEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+        });
+    });
+    it('should return error if the associated podcast does not exist', () => {
+      return privateTest(`
+        mutation {
+          updateEpisode(
+            input: {
+              title: "episodeUpdate"
+              category: "episodeCategoryUpdate"
+              podcastId: 999
+              episodeId: 1
+            }
+          ) {
+            ok
+            error
+          }
+        }    
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            updateEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(false);
+          expect(error).toBe('Podcast with id 999 not found');
+        });
+    });
+    it('should return error if the associated episode does not exist', () => {
+      return privateTest(`
+        mutation {
+          updateEpisode(
+            input: {
+              title: "episodeUpdate"
+              category: "episodeCategoryUpdate"
+              podcastId: 1
+              episodeId: 999
+            }
+          ) {
+            ok
+            error
+          }
+        }    
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            updateEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(false);
+          expect(error).toBe(
+            'Episode with id 999 not found in podcast with id 1',
+          );
+        });
+    });
+  });
+
+  describe('deleteEpisode', () => {
+    it('should delete episode', () => {
+      return privateTest(`
+      mutation {
+        deleteEpisode(input: { podcastId: 1, episodeId: 1 }) {
+          ok
+          error
+        }
+      }
+      
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            deleteEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(true);
+          expect(error).toBe(null);
+        });
+    });
+    it('should return error if the associated podcast does not exist', () => {
+      return privateTest(`
+      mutation {
+        deleteEpisode(input: { podcastId: 999, episodeId: 1 }) {
+          ok
+          error
+        }
+      }
+      
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            deleteEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(false);
+          expect(error).toBe('Podcast with id 999 not found');
+        });
+    });
+    it('should return error if the associated episode does not exist', () => {
+      return privateTest(`
+      mutation {
+        deleteEpisode(input: { podcastId: 1, episodeId: 999 }) {
+          ok
+          error
+        }
+      }
+      
+        `)
+        .expect(200)
+        .expect((res) => {
+          const {
+            deleteEpisode: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toBe(false);
+          expect(error).toBe(
+            'Episode with id 999 not found in podcast with id 1',
+          );
+        });
+    });
+  });
+  describe('deletePodcast', () => {
+    it('should delete podcast', () => {
+      return privateTest(
+        `
+        mutation{
+          deletePodcast(input:{id:1}){
+            ok
+            error
+          }
+        }
+      `,
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            deletePodcast: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toEqual(true);
+          expect(error).toEqual(null);
+        });
+    });
+    it('should return an error if the podcast does not exist', () => {
+      return privateTest(
+        `
+        mutation{
+          deletePodcast(input:{id:999}){
+            ok
+            error
+          }
+        }
+      `,
+      )
+        .expect(200)
+        .expect((res) => {
+          const {
+            deletePodcast: { ok, error },
+          } = resDecomposer(res);
+          expect(ok).toEqual(false);
+          expect(error).toEqual('Podcast with id 999 not found');
+        });
+    });
+  });
 });

@@ -30,6 +30,7 @@ export const beforeAllSetup = async (): Promise<{
     await app.init();
     return { app, usersRepository, podcastRepository };
   } catch (err) {
+    console.log('err:', err);
     throw new Error();
   }
 };
